@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 from rest_framework import renderers
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, detail_route
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
@@ -11,7 +11,7 @@ from snippets.models import Snippet
 from snippets.permissions import IsOwnerOrReadOnly
 from snippets.serializers import SnippetSerializer, UserSerializer
 from rest_framework import generics, permissions
-
+from helpers import remote_run
 
 @api_view(('GET',))
 def api_root(request, format=None):
@@ -20,8 +20,6 @@ def api_root(request, format=None):
         'snippets': reverse('snippet-list', request=request, format=format)
     })
 
-
-from rest_framework.decorators import detail_route
 
 class SnippetViewSet(viewsets.ModelViewSet):
     """
@@ -43,7 +41,19 @@ class SnippetViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         print "expanding default behaviour :p"
         serializer.save(owner=self.request.user)
-    # def perform_destroy(self, instance):
+
+    @detail_route(methods=['get'])
+    def status(self, request, pk=None):
+        print "got status"
+        user = self.get_object()
+        status = "off"
+        try:
+            _out, _err, success = remote_run("uname -a")
+            if success:
+                status = "on"
+        except ValueError:
+            pass
+        return Response({'status': status})
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
